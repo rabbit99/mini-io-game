@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node server/server.js",
     "dev": "node server/server.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
     "open": "powershell -NoLogo -NoProfile -Command \"$used=(Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue); if(-not $used){ Start-Process node -ArgumentList 'server/server.js' }; Start-Sleep -Milliseconds 400; Start-Process http://localhost:3000\"",
     "start:open": "npm run open"
   },
