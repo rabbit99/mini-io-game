@@ -139,6 +139,45 @@ Latency Metrics: net.js emits pingCheck every 2s; RTT + jitter (std-dev approxim
 - GPU instanced rendering path (WebGL) for large food counts
 - Automated latency simulation & jitter buffer tuning
 
+## Deployment (Fly.io)
+
+The repo includes `Dockerfile` + `fly.toml` for Fly.io.
+
+1. Install flyctl: https://fly.io/docs/hands-on/install/
+2. Adjust `fly.toml`:
+   - `app = "mini-io-game"` -> change to a globally unique name
+   - `primary_region = "sin"` (pick region near players)
+3. Login & deploy:
+
+```bash
+fly auth login
+fly launch --no-deploy   # (skip if fly.toml already present)
+fly deploy
+```
+
+4. Open & logs:
+
+```bash
+fly open
+fly logs
+```
+
+5. Scale (optional):
+
+```bash
+fly scale count 2
+```
+
+Health check hits `/build-info` (served by server) to verify the instance is healthy. Static assets are served from `public/`.
+
+If build fails on Fly, confirm:
+
+- Docker build uses Node 20 (matches local)
+- `build:prod` completes (requires dev deps; they are installed in build stage)
+- Ports 80/443 mapped -> internal 3000 (see `fly.toml` services section)
+
+For custom domain: `fly certs add <domain>` then configure DNS A/AAAA per Fly docs.
+
 ## License
 
 MIT - You may use / modify with attribution. Avoid copying trademarked names or proprietary assets from existing games.

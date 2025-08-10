@@ -1,0 +1,43 @@
+# fly.toml app configuration file generated for mini-io-game
+app = "mini-io-game"
+primary_region = "sin" # choose closest region, adjust if needed
+kill_signal = "SIGINT"
+kill_timeout = 5
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "3000"
+  NODE_ENV = "production"
+
+[[services]]
+  internal_port = 3000
+  processes = ["app"]
+  protocol = "tcp"
+
+  [[services.ports]]
+    handlers = ["http"]
+    port = 80
+  [[services.ports]]
+    handlers = ["tls", "http"]
+    port = 443
+
+  [services.concurrency]
+    hard_limit = 100
+    soft_limit = 80
+    type = "connections"
+
+  [[services.http_checks]]
+    interval = 10000
+    timeout = 2000
+    method = "get"
+    path = "/build-info"
+    protocol = "http"
+    tls_skip_verify = false
+    grace_period = "10s"
+
+  [[services.tcp_checks]]
+    interval = 15000
+    timeout = 2000
+    grace_period = "10s"
