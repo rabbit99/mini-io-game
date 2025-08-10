@@ -1,43 +1,49 @@
-// 網路與同步
-import { app, markFoodDirty } from "./state.js";
+// 網路與同步 (TypeScript)
+import { app, markFoodDirty, PlayerClient } from "./state.js";
 
-let socket = null;
-let playerSnapshots = [];
-let playerVel = new Map();
-let lastPlayers = new Map();
+interface SocketLike {
+  on(_ev: string, _cb: (..._args: any[]) => void): void;
+  emit(_ev: string, _data?: any): void;
+}
+interface PlayerSnapshotMap {
+  t: number;
+  players: Map<string, PlayerClient>;
+}
+
+let socket: SocketLike | null = null;
+let playerSnapshots: PlayerSnapshotMap[] = [];
+const playerVel = new Map<string, { vx: number; vy: number }>();
+const lastPlayers = new Map<string, PlayerClient>();
 let lastPlayersTime = 0;
 const NET_INTERP_DELAY = 100;
-// 連線統計
-let rttSamples = [];
+let rttSamples: number[] = [];
 let lastBinSize = 0;
-let lastAppliedTimestamp = 0; // 防止 JSON 與 Binary 重複套用
+let lastAppliedTimestamp = 0;
 
-function recordRTT(rtt) {
+function recordRTT(rtt: number) {
   rttSamples.push(rtt);
   if (rttSamples.length > 30) rttSamples.shift();
   if (rttSamples.length >= 2) {
     const avg = rttSamples.reduce((a, b) => a + b, 0) / rttSamples.length;
-    const variance =
-      rttSamples.reduce((a, b) => a + (b - avg) * (b - avg), 0) /
-      rttSamples.length;
+    const variance = rttSamples.reduce((a, b) => a + (b - avg) * (b - avg), 0) / rttSamples.length;
     const jitter = Math.round(Math.sqrt(variance));
     const jitterElem = document.getElementById("jitter");
-    if (jitterElem) jitterElem.textContent = jitter;
+    if (jitterElem) jitterElem.textContent = String(jitter);
   }
 }
 
-function getInterpolatedPlayers() {
-  if (playerSnapshots.length < 2) return app.state.players;
+function getInterpolatedPlayers(): PlayerClient[] {
+  if (playerSnapshots.length < 2) return app.state.players as PlayerClient[];
   const renderTime = Date.now() - NET_INTERP_DELAY;
   let i = playerSnapshots.length - 1;
   while (i > 0 && playerSnapshots[i - 1].t > renderTime) i--;
   const newer = playerSnapshots[i];
-  if (!newer) return app.state.players;
+  if (!newer) return app.state.players as PlayerClient[];
   if (i === 0) return Array.from(newer.players.values());
   const older = playerSnapshots[i - 1];
   const span = newer.t - older.t || 1;
   const f = Math.max(0, Math.min(1, (renderTime - older.t) / span));
-  const out = [];
+  const out: PlayerClient[] = [];
   for (const [id, np] of newer.players) {
     const op = older.players.get(id) || np;
     let x = op.x + (np.x - op.x) * f;
@@ -50,33 +56,24 @@ function getInterpolatedPlayers() {
         y += vel.vy * future * 0.9;
       }
     }
-    out.push({
-      id,
-      x,
-      y,
-      r: op.r + (np.r - op.r) * f,
-      c: np.c,
-      s: np.s,
-      name: np.name,
-    });
+    out.push({ id, x, y, r: op.r + (np.r - op.r) * f, c: np.c, s: np.s, name: np.name });
   }
   return out;
 }
 
-function init(ioSocket) {
+function init(ioSocket: SocketLike) {
   socket = ioSocket;
-  // 註冊 socket 事件
-  socket.on("init", (data) => {
+  socket.on("init", (data: any) => {
     app.myId = data.id;
     app.worldSize = data.worldSize;
   });
-  socket.on("joined", (data) => {
+  socket.on("joined", () => {
     app.inGame = true;
     app.dead = false;
     const deathMsg = document.getElementById("deathMsg");
     if (deathMsg) deathMsg.style.display = "none";
   });
-  socket.on("death", (data) => {
+  socket.on("death", (data: any) => {
     app.inGame = false;
     app.dead = true;
     const msg = document.getElementById("deathMsg");
@@ -88,10 +85,12 @@ function init(ioSocket) {
     const nameWrap = document.getElementById("nameInputWrap");
     if (nameWrap) nameWrap.style.display = "block";
   });
-  socket.on("state", (s) => {
+  socket.on("state", (s: any) => {
     app.state.viewR = s.viewR;
-    if (s.size) document.getElementById("pktsize").textContent = s.size;
-    // 正確維護 foodMap
+    if (s.size) {
+      const pk = document.getElementById("pktsize");
+      if (pk) pk.textContent = String(s.size);
+    }
     if (s.addFood) {
       for (const f of s.addFood) app.foodMap.set(f.id, f);
     }
@@ -99,19 +98,14 @@ function init(ioSocket) {
       for (const id of s.removeFood) app.foodMap.delete(id);
     }
     if (s.addFood || s.removeFood) markFoodDirty();
-    // 插值快照
-    let pMap;
+    let pMap: Map<string, PlayerClient>;
     if (s.full) {
       pMap = new Map();
       for (const p of s.players) {
         const prev = lastPlayers.get(p.id);
         if (prev) {
           const dt = (s.t - lastPlayersTime) / 1000;
-          if (dt > 0)
-            playerVel.set(p.id, {
-              vx: (p.x - prev.x) / dt,
-              vy: (p.y - prev.y) / dt,
-            });
+          if (dt > 0) playerVel.set(p.id, { vx: (p.x - prev.x) / dt, vy: (p.y - prev.y) / dt });
         }
         lastPlayers.set(p.id, p);
         pMap.set(p.id, { ...p });
@@ -121,11 +115,7 @@ function init(ioSocket) {
         const prev = lastPlayers.get(p.id);
         if (prev) {
           const dt = (s.t - lastPlayersTime) / 1000;
-          if (dt > 0)
-            playerVel.set(p.id, {
-              vx: (p.x - prev.x) / dt,
-              vy: (p.y - prev.y) / dt,
-            });
+          if (dt > 0) playerVel.set(p.id, { vx: (p.x - prev.x) / dt, vy: (p.y - prev.y) / dt });
         }
         lastPlayers.set(p.id, p);
       }
@@ -133,11 +123,7 @@ function init(ioSocket) {
         const prev = lastPlayers.get(p.id);
         if (prev) {
           const dt = (s.t - lastPlayersTime) / 1000;
-          if (dt > 0)
-            playerVel.set(p.id, {
-              vx: (p.x - prev.x) / dt,
-              vy: (p.y - prev.y) / dt,
-            });
+          if (dt > 0) playerVel.set(p.id, { vx: (p.x - prev.x) / dt, vy: (p.y - prev.y) / dt });
         }
         const merged = { ...(lastPlayers.get(p.id) || {}), ...p };
         lastPlayers.set(p.id, merged);
@@ -152,33 +138,27 @@ function init(ioSocket) {
     lastPlayersTime = s.t;
     playerSnapshots.push({ t: s.t, players: pMap });
     const cutoff = performance.now() - 2000;
-    while (playerSnapshots.length && playerSnapshots[0].t < cutoff)
-      playerSnapshots.shift();
-    // 更新 app.state.players 供渲染
+    while (playerSnapshots.length && playerSnapshots[0].t < cutoff) playerSnapshots.shift();
     app.state.players = Array.from(pMap.values());
   });
-  // Binary state (僅尺寸統計，目前未實作解析)
-  socket.on("stateb", (buf) => {
+  socket.on("stateb", (buf: any) => {
     if (!buf) return;
     lastBinSize = buf.byteLength || 0;
     const binElem = document.getElementById("binsize");
-    if (binElem) binElem.textContent = lastBinSize;
+    if (binElem) binElem.textContent = String(lastBinSize);
     try {
       decodeBinaryState(buf);
-    } catch (e) {
-      // 失敗則忽略，不影響 JSON
-    }
+    } catch {}
   });
-  // RTT / Jitter
-  socket.on("pongCheck", (clientStamp) => {
+  socket.on("pongCheck", (clientStamp: number) => {
     const now = performance.now();
     const rtt = Math.round(now - clientStamp);
     const rttElem = document.getElementById("rtt");
-    if (rttElem) rttElem.textContent = rtt;
+    if (rttElem) rttElem.textContent = String(rtt);
     recordRTT(rtt);
   });
   setInterval(() => {
-    socket.emit("pingCheck", performance.now());
+    socket?.emit("pingCheck", performance.now());
   }, 2000);
 }
 
@@ -189,63 +169,53 @@ export const net = {
   init,
   getInterpolatedPlayers,
   getStats() {
-    return {
-      rtt: rttSamples.at(-1) ?? null,
-      jitterSamples: rttSamples,
-      lastBinSize,
-    };
+    return { rtt: rttSamples.at(-1) ?? null, jitterSamples: rttSamples, lastBinSize };
   },
 };
 
-// ================= Binary Decode =================
-function decodeBinaryState(arrayBuf) {
-  // 若是 Node Buffer 轉 ArrayBuffer
-  const buf = arrayBuf.buffer ? arrayBuf : new Uint8Array(arrayBuf);
+function decodeBinaryState(arrayBuf: ArrayBuffer | Uint8Array) {
+  const buf = (arrayBuf as any).buffer ? (arrayBuf as Uint8Array) : new Uint8Array(arrayBuf);
   const view =
     buf instanceof Uint8Array
       ? new DataView(buf.buffer, buf.byteOffset, buf.byteLength)
-      : new DataView(buf);
+      : new DataView(buf as any);
   let o = 0;
-  function readU8() {
+  const readU8 = () => {
     const v = view.getUint8(o);
     o += 1;
     return v;
-  }
-  function readU16() {
+  };
+  const readU16 = () => {
     const v = view.getUint16(o, true);
     o += 2;
     return v;
-  }
-  function readU32() {
+  };
+  const readU32 = () => {
     const v = view.getUint32(o, true);
     o += 4;
     return v;
-  }
-  function readF32() {
+  };
+  const readF32 = () => {
     const v = view.getFloat32(o, true);
     o += 4;
     return v;
-  }
-  function readStr() {
+  };
+  const readStr = () => {
     const len = readU8();
     let s = "";
-    for (let i = 0; i < len; i++) {
-      s += String.fromCharCode(readU8());
-    }
+    for (let i = 0; i < len; i++) s += String.fromCharCode(readU8());
     return s;
-  }
+  };
   const t = readU32();
   const fullFlag = readU8();
   const full = !!fullFlag;
   const viewR = readF32();
-  // 如果這個 timestamp 已處理（JSON 已套用），則跳過細節，只更新視野半徑
   if (t <= lastAppliedTimestamp) {
     return;
   }
   app.state.viewR = viewR;
-  const newPlayersMap = new Map();
-  // 暫存玩家資料 (含 nameHash) 以便字典解析後填名稱
-  const pendingNameResolve = [];
+  const newPlayersMap = new Map<string, PlayerClient>();
+  const pending: any[] = [];
   if (full) {
     const count = readU16();
     for (let i = 0; i < count; i++) {
@@ -256,14 +226,12 @@ function decodeBinaryState(arrayBuf) {
       const score = readU32();
       const hue = readU16();
       const nameHash = readU16();
-      // velocity 계산
       const prev = lastPlayers.get(id);
       if (prev) {
         const dt = (t - lastPlayersTime) / 1000;
-        if (dt > 0)
-          playerVel.set(id, { vx: (x - prev.x) / dt, vy: (y - prev.y) / dt });
+        if (dt > 0) playerVel.set(id, { vx: (x - prev.x) / dt, vy: (y - prev.y) / dt });
       }
-      const pObj = {
+      const pObj: any = {
         id,
         x,
         y,
@@ -274,34 +242,23 @@ function decodeBinaryState(arrayBuf) {
         _nh: nameHash,
       };
       newPlayersMap.set(id, pObj);
-      pendingNameResolve.push(pObj);
+      pending.push(pObj);
     }
-    // 字典
     const dictCount = readU16();
-    const nameDict = new Map();
+    const nameDict = new Map<number, string>();
     for (let i = 0; i < dictCount; i++) {
       const h = readU16();
       const name = readStr();
       nameDict.set(h, name);
     }
-    // 名稱賦值
-    for (const p of pendingNameResolve) {
+    for (const p of pending) {
       p.name = nameDict.get(p._nh) || "";
       delete p._nh;
-      lastPlayers.set(p.id, {
-        id: p.id,
-        x: p.x,
-        y: p.y,
-        r: p.r,
-        c: p.c,
-        s: p.s,
-        name: p.name,
-      });
+      lastPlayers.set(p.id, { id: p.id, x: p.x, y: p.y, r: p.r, c: p.c, s: p.s, name: p.name });
     }
   } else {
-    // add
     const addCount = readU16();
-    const added = [];
+    const added: any[] = [];
     for (let i = 0; i < addCount; i++) {
       const id = readStr();
       const x = readF32();
@@ -313,10 +270,9 @@ function decodeBinaryState(arrayBuf) {
       const prev = lastPlayers.get(id);
       if (prev) {
         const dt = (t - lastPlayersTime) / 1000;
-        if (dt > 0)
-          playerVel.set(id, { vx: (x - prev.x) / dt, vy: (y - prev.y) / dt });
+        if (dt > 0) playerVel.set(id, { vx: (x - prev.x) / dt, vy: (y - prev.y) / dt });
       }
-      const pObj = {
+      const pObj: any = {
         id,
         x,
         y,
@@ -326,10 +282,9 @@ function decodeBinaryState(arrayBuf) {
         name: null,
         _nh: nameHash,
       };
-      lastPlayers.set(id, pObj); // 暫存
+      lastPlayers.set(id, pObj as any);
       added.push(pObj);
     }
-    // upd
     const updCount = readU16();
     for (let i = 0; i < updCount; i++) {
       const id = readStr();
@@ -340,30 +295,27 @@ function decodeBinaryState(arrayBuf) {
       const prev = lastPlayers.get(id);
       if (prev) {
         const dt = (t - lastPlayersTime) / 1000;
-        if (dt > 0)
-          playerVel.set(id, { vx: (x - prev.x) / dt, vy: (y - prev.y) / dt });
+        if (dt > 0) playerVel.set(id, { vx: (x - prev.x) / dt, vy: (y - prev.y) / dt });
       }
-      const merged = {
+      const merged: any = {
         ...(prev || {}),
         id,
         x,
         y,
         r,
         s: score,
-        c: prev?.c || `hsl(0 70% 50%)`,
+        c: prev?.c || "hsl(0 70% 50%)",
       };
       lastPlayers.set(id, merged);
     }
-    // rem
     const remCount = readU16();
     for (let i = 0; i < remCount; i++) {
       const id = readStr();
       lastPlayers.delete(id);
       playerVel.delete(id);
     }
-    // 名稱字典 (僅針對新增者)
     const dictCount = readU16();
-    const nameDict = new Map();
+    const nameDict = new Map<number, string>();
     for (let i = 0; i < dictCount; i++) {
       const h = readU16();
       const name = readStr();
@@ -374,10 +326,8 @@ function decodeBinaryState(arrayBuf) {
       delete p._nh;
       lastPlayers.set(p.id, p);
     }
-    // newPlayersMap = copy of lastPlayers
     for (const [id, p] of lastPlayers) newPlayersMap.set(id, { ...p });
   }
-  // 食物增刪
   const addFoodCount = readU16();
   let foodChanged = false;
   for (let i = 0; i < addFoodCount; i++) {
@@ -396,11 +346,6 @@ function decodeBinaryState(arrayBuf) {
   if (foodChanged) markFoodDirty();
   lastPlayersTime = t;
   lastAppliedTimestamp = t;
-  if (full) {
-    // full snapshot: lastPlayers 已重建
-  } else {
-    // delta 已合併於 lastPlayers
-  }
   playerSnapshots.push({
     t,
     players: newPlayersMap.size
@@ -408,9 +353,6 @@ function decodeBinaryState(arrayBuf) {
       : new Map([...lastPlayers].map(([id, p]) => [id, { ...p }])),
   });
   const cutoff = performance.now() - 2000;
-  while (playerSnapshots.length && playerSnapshots[0].t < cutoff)
-    playerSnapshots.shift();
-  app.state.players = Array.from(
-    playerSnapshots[playerSnapshots.length - 1].players.values()
-  );
+  while (playerSnapshots.length && playerSnapshots[0].t < cutoff) playerSnapshots.shift();
+  app.state.players = Array.from(playerSnapshots[playerSnapshots.length - 1].players.values());
 }

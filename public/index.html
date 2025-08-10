@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
+  <!-- 若使用純靜態空間 + 遠端 Node 伺服器，填入遠端伺服器根網址（含 https://）。留空則使用同網域。 -->
+  <meta name="api-origin" content="http://nineescape.com/">
+  <meta name="build-hash" content="152985a66a">
   <meta charset="UTF-8" />
   <title>Mini IO Game</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -30,9 +33,35 @@
   <div id="nameInputWrap">
   <input id="playerName" placeholder="名字" maxlength="16" />
   <button id="startBtn">開始遊戲</button>
+  <button id="restartBtn" style="display:none;margin-left:6px;">再玩一次</button>
   </div>
-  <script src="/socket.io/socket.io.js"></script>
-  <script type="module" src="main.js"></script>
+  <!-- 動態載入 socket.io client，支援跨網域遠端伺服器 -->
+  <script>
+  (function(){
+    var meta=document.querySelector('meta[name="api-origin"]');
+    var origin=meta&&meta.content.trim();
+    var primary=(origin?origin:'')+"/socket.io/socket.io.js";
+    var cdnFallback="https://cdn.socket.io/4.7.5/socket.io.min.js";
+    window.__IO_READY_PROMISE=new Promise(function(res){
+      function load(src, final){
+        var s=document.createElement('script');
+        s.src=src;
+        s.onload=function(){res();};
+        s.onerror=function(e){
+          console.warn('[io] load failed', src, e);
+          if(!final){
+            load(cdnFallback, true);
+          }else{
+            window.__IO_LOAD_FAILED=true;res();
+          }
+        };
+        document.head.appendChild(s);
+      }
+      load(primary, false);
+    });
+  })();
+  </script>
+  <script type="module" src="bundle.152985a66a.js"></script>
 </body>
 
 </body>

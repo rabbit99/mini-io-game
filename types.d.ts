@@ -1,5 +1,10 @@
 // Shared game type declarations (initial scaffold for TS migration)
-export interface FoodItem { id: string; x: number; y: number; color: string; }
+export interface FoodItem {
+  id: string;
+  x: number;
+  y: number;
+  color: string;
+}
 
 export interface PlayerSnapshot {
   id: string;
@@ -41,7 +46,7 @@ export interface StateDeltaJSON {
   t: number;
   full: false;
   add: PlayerSnapshot[];
-  upd: Array<Pick<PlayerSnapshot, 'id' | 'x' | 'y' | 'r' | 's'>>;
+  upd: Array<Pick<PlayerSnapshot, "id" | "x" | "y" | "r" | "s">>;
   rem: string[];
   addFood: FoodItem[];
   removeFood: string[];

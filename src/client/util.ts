@@ -1,15 +1,21 @@
-// 工具函式
-export function clamp(v, min, max) {
+// 工具函式 (TypeScript)
+export function clamp(v: number, min: number, max: number): number {
   return v < min ? min : v > max ? max : v;
 }
 
 // 玩家名稱快取繪製
-const nameCanvasCache = new Map();
-export function getNameCanvas(name, fontPx) {
+interface NameCanvasCacheEntry {
+  canvas: HTMLCanvasElement;
+  w: number;
+  h: number;
+}
+const nameCanvasCache = new Map<string, NameCanvasCacheEntry>();
+export function getNameCanvas(name: string, fontPx: number): NameCanvasCacheEntry {
   const key = name + ":" + fontPx;
-  if (nameCanvasCache.has(key)) return nameCanvasCache.get(key);
+  const cached = nameCanvasCache.get(key);
+  if (cached) return cached;
   const canvas = document.createElement("canvas");
-  const ctx2 = canvas.getContext("2d");
+  const ctx2 = canvas.getContext("2d")!;
   ctx2.font = `bold ${fontPx}px system-ui,sans-serif`;
   const w = Math.ceil(ctx2.measureText(name).width) + 8;
   const h = fontPx + 4;
@@ -29,15 +35,15 @@ export function getNameCanvas(name, fontPx) {
 }
 
 // FPS 計算
-let lastFpsUpdate = 0,
-  frameCount = 0;
-export function updateFPS() {
+let lastFpsUpdate = 0;
+let frameCount = 0;
+export function updateFPS(): void {
   frameCount++;
   const now = performance.now();
   if (now - lastFpsUpdate > 500) {
     const fps = Math.round((frameCount * 1000) / (now - lastFpsUpdate));
     const fpsElem = document.getElementById("fps");
-    if (fpsElem) fpsElem.textContent = fps;
+    if (fpsElem) fpsElem.textContent = String(fps);
     lastFpsUpdate = now;
     frameCount = 0;
   }

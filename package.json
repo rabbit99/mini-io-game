@@ -1,18 +1,67 @@
 {
   "name": "mini-io-game",
   "version": "0.1.0",
-  "description": "A minimal real-time .io style multiplayer game (original code, inspired by cell-eating mechanics)",
+  "description": "A minimal real-time .io style multiplayer game (TypeScript, socket.io, canvas)",
+  "license": "MIT",
+  "author": "Your Name <you@example.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourname/mini-io-game.git"
+  },
+  "keywords": [
+    "io-game",
+    "multiplayer",
+    "realtime",
+    "socket.io",
+    "typescript",
+    "canvas"
+  ],
   "type": "module",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18.18.0"
+  },
   "scripts": {
-    "start": "node server/server.js",
-    "dev": "node server/server.js",
+    "build:server": "tsc -p tsconfig.server.json",
+    "bundle:dev": "esbuild src/client/main.ts --bundle --outfile=public/bundle.js --format=esm --platform=browser --target=es2020 --log-level=info",
+    "bundle:watch": "esbuild src/client/main.ts --bundle --outfile=public/bundle.js --format=esm --platform=browser --target=es2020 --log-level=error --watch",
+    "bundle:prod": "esbuild src/client/main.ts --bundle --outfile=public/bundle.js --format=esm --platform=browser --target=es2020 --minify --log-level=info",
+    "dev": "npm run build:server && npm run bundle:dev && concurrently -k -n s,run,b --prefix-colors blue,yellow,green \"cross-env NODE_ENV=development tsc -p tsconfig.server.json --watch\" \"nodemon -q -w dist/server dist/server/server.js\" \"npm run bundle:watch\"",
+    "build:prod": "npm run build:server && tsc -p tsconfig.client.json --noEmit && npm run bundle:prod && node scripts/hash-bundle.mjs && node scripts/size-report.mjs",
+    "start": "npm run build:prod && node dist/server/server.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "open": "powershell -NoLogo -NoProfile -Command \"$used=(Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue); if(-not $used){ Start-Process node -ArgumentList 'server/server.js' }; Start-Sleep -Milliseconds 400; Start-Process http://localhost:3000\"",
-    "start:open": "npm run open"
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix",
+    "format": "prettier --write .",
+    "clean": "rimraf dist/server && echo Cleaned",
+    "release:patch": "npm version patch -m 'chore(release): %s' && git push && git push --tags",
+    "release:minor": "npm version minor -m 'chore(release): %s' && git push && git push --tags",
+    "release:major": "npm version major -m 'chore(release): %s' && git push && git push --tags"
   },
   "dependencies": {
     "express": "^4.19.2",
-    "socket.io": "^4.7.5",
-    "nanoid": "^5.0.7"
-  }
+    "nanoid": "^5.0.7",
+    "socket.io": "^4.7.5"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.2.1",
+    "@typescript-eslint/eslint-plugin": "^8.39.0",
+    "@typescript-eslint/parser": "^8.39.0",
+    "concurrently": "^9.2.0",
+    "esbuild": "^0.25.8",
+    "eslint": "^9.33.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-import": "^2.32.0",
+    "nodemon": "^3.1.10",
+    "prettier": "^3.6.2",
+    "rimraf": "^6.0.1",
+    "cross-env": "^7.0.3"
+  },
+  "browserslist": [
+    "defaults",
+    ">0.5%",
+    "not dead",
+    "not op_mini all"
+  ]
 }

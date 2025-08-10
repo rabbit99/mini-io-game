@@ -1,11 +1,20 @@
-// 渲染相關
+// 渲染相關 (TypeScript)
 import { app, FOG, GRID_TILE_DIM, gridCanvas } from "./state.js";
 import { clamp, getNameCanvas } from "./util.js";
 
+interface PlayerRender {
+  id: string;
+  x: number;
+  y: number;
+  r: number;
+  c: string;
+  s: number;
+  name: string;
+}
+
 export const render = {
   viewScale: 1,
-  // 背景繪製（假設外層已套用世界座標轉換）
-  background(ctx) {
+  background(ctx: CanvasRenderingContext2D) {
     if (!gridCanvas) return;
     const tile = gridCanvas;
     const tileWorldSize = GRID_TILE_DIM;
@@ -17,10 +26,14 @@ export const render = {
       }
     }
   },
-  food(me, ctx) {
-    // 已移至 food.js 的 drawFood (此處保留空實作以相容舊呼叫)
+  food(_me: PlayerRender | undefined, _ctx: CanvasRenderingContext2D) {
+    // Deprecated (use drawFood from food.ts)
   },
-  players(playersInterpolated, me, ctx) {
+  players(
+    playersInterpolated: PlayerRender[],
+    me: PlayerRender | undefined,
+    ctx: CanvasRenderingContext2D
+  ) {
     let visiblePlayers = playersInterpolated;
     if (me) {
       const viewRadius = app.state.viewR || 1600;
@@ -46,14 +59,14 @@ export const render = {
       }
     }
   },
-  fog(me, ctx, W, H) {
+  fog(me: PlayerRender | undefined, ctx: CanvasRenderingContext2D, W: number, H: number) {
     if (!FOG.ENABLED || !app.inGame || app.dead) return;
     if (!me) return;
     if (app.basePlayerRadius == null) app.basePlayerRadius = me.r;
     if (app.basePlayerScore === 0) app.basePlayerScore = Math.max(1, me.s);
     let mult = 1;
     if (FOG.MODE === "radius") {
-      const growth = Math.max(1, me.r / app.basePlayerRadius);
+      const growth = Math.max(1, me.r / (app.basePlayerRadius || 1));
       mult = 1 + (Math.sqrt(growth) - 1) * FOG.SCALE_STRENGTH;
     } else if (FOG.MODE === "score") {
       const val = me.s;
@@ -77,19 +90,24 @@ export const render = {
     ctx.fillRect(0, 0, W, H);
     ctx.restore();
   },
-  hud(me, ctx, W, H) {
+  hud(me: PlayerRender | undefined, _ctx: CanvasRenderingContext2D, _W: number, _H: number) {
     if (me) {
-      document.getElementById("mass").textContent = me.r.toFixed(1);
-      document.getElementById("score").textContent = me.s;
+      const massEl = document.getElementById("mass");
+      if (massEl) massEl.textContent = me.r.toFixed(1);
+      const scoreEl = document.getElementById("score");
+      if (scoreEl) scoreEl.textContent = String(me.s);
     }
-    document.getElementById("pcount").textContent = app.state.players.length;
-    document.getElementById("fcount").textContent = app.foodMap.size;
-    // 其他 HUD 元素可依需求擴充
+    const pc = document.getElementById("pcount");
+    if (pc) pc.textContent = String(app.state.players.length);
+    const fc = document.getElementById("fcount");
+    if (fc) fc.textContent = String(app.foodMap.size);
   },
-  leaderboard(ctx, W, H) {
+  leaderboard(_ctx: CanvasRenderingContext2D, _W: number, _H: number) {
     const lb = [...app.state.players].sort((a, b) => b.s - a.s).slice(0, 8);
-    document.getElementById("leaderboard").innerHTML =
-      "<b>排行榜</b><br/>" +
-      lb.map((p, i) => `${i + 1}. ${p.name || "anon"} - ${p.s}`).join("<br/>");
+    const el = document.getElementById("leaderboard");
+    if (el)
+      el.innerHTML =
+        "<b>排行榜</b><br/>" +
+        lb.map((p, i) => `${i + 1}. ${p.name || "anon"} - ${p.s}`).join("<br/>");
   },
 };

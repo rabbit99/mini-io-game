@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src/client",
+    "outDir": "public",
+    "allowJs": false,
+    "noEmitOnError": true,
+    "composite": true,
+    "sourceMap": true,
+    "lib": ["ES2022", "DOM"],
+    "types": []
+  },
+  "include": ["src/client/**/*.ts"],
+  "exclude": ["node_modules", "dist", "public/**/*.ts"]
+}

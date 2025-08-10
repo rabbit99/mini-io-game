@@ -7,6 +7,10 @@ dist/
 build/
 coverage/
 *.tsbuildinfo
+public/*.js
+public/*.js.map
+public/*.d.ts
+server/server.js
 
 # Logs
 logs/

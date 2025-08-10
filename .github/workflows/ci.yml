@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build (prod)
+        run: npm run build:prod
+
+      - name: Upload size report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: size-report
+          path: dist/meta/size-report.json
+          if-no-files-found: warn
+
+      - name: Upload bundle manifest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-manifest
+          path: dist/meta/bundle-manifest.json
+          if-no-files-found: warn
+
+      - name: List output
+        run: |
+          echo 'Hashed bundle:'
+          ls -1 public | grep bundle || true
+          echo 'Meta:'
+          ls -1 dist/meta || true

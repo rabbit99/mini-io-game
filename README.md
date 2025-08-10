@@ -24,22 +24,26 @@ Then open http://localhost:3000
 
 ## Code Structure
 
-Server
+Server Source
 
-- `server/server.js` Authoritative simulation (30 ticks/sec), delta & full snapshots, optional binary (`stateb`) stream, food spawn, collision, death events.
+- `server/server.ts` Authoritative simulation (30 ticks/sec), delta & full snapshots, optional binary (`stateb`) stream, food spawn, collision, death events (compiled to `dist/server/server.js`).
 
-Client (modular)
+Client Source (TypeScript under `src/client` -> compiled assets emitted to `public/`)
 
-- `public/index.html` Canvas + HUD skeleton
-- `public/state.js` Central reactive state & config (fog, grid, chunk metadata)
-- `public/net.js` Socket init, JSON + binary snapshot ingestion, interpolation buffer, RTT/jitter stats
-- `public/events.js` Centralized DOM & input bindings (resize, mouse, keys, start button)
-- `public/render.js` World layer rendering (grid, players, fog, HUD, leaderboard) – food rendering delegated
-- `public/food.js` Food map chunk rebuild & efficient draw (lazy rebuild after mutations)
-- `public/util.js` Shared helpers (clamp, FPS counter, name offscreen cache)
-- `public/main.js` Bootstraps game, camera transform & smooth scale, draw loop orchestration
+- `public/index.html` Canvas + HUD skeleton (loads compiled `main.js`)
+- `src/client/state.ts` Central reactive state & config (fog, grid, chunk metadata)
+- `src/client/net.ts` Socket init, JSON + binary snapshot ingestion, interpolation buffer, RTT/jitter stats
+- `src/client/events.ts` Centralized DOM & input bindings (resize, mouse, keys, start / restart buttons)
+- `src/client/render.ts` World layer rendering (grid, players, fog, HUD, leaderboard) – food rendering delegated
+- `src/client/food.ts` Food map chunk rebuild & efficient draw (lazy rebuild after mutations)
+- `src/client/util.ts` Shared helpers (clamp, FPS counter, name offscreen cache)
+- `src/client/main.ts` Bootstraps game, camera transform & adaptive smooth scale, draw loop orchestration
 
-Removed legacy: `game-app.js` (monolithic prototype) replaced by the above modules.
+Build Output (generated, git-ignored)
+
+- `public/*.js`, `public/*.js.map`, `public/*.d.ts` are generated from `src/client`.
+
+Legacy monolithic prototype and previous JS sources in `public/` were removed after the TypeScript modular migration.
 
 ## Architecture Diagram (ASCII)
 
