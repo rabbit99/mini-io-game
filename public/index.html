@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <title>Mini IO Game</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    html,body {margin:0;padding:0;overflow:hidden;background:#10141a;color:#eee;font-family: system-ui, sans-serif;}
+    #hud {position:fixed;top:8px;left:8px;font-size:14px;line-height:1.3;}
+    #leaderboard {position:fixed;top:8px;right:8px;background:rgba(0,0,0,.4);padding:8px 12px;border-radius:8px;}
+    canvas {display:block;}
+    #nameInputWrap {position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#1e252f;padding:16px 20px;border:1px solid #2f3944;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,.5);} 
+    #nameInputWrap input {padding:6px 10px;font-size:16px;border-radius:6px;border:1px solid #394957;background:#141b22;color:#eee;}
+    #nameInputWrap button {padding:6px 14px;margin-left:8px;font-size:15px;border-radius:6px;border:1px solid #4d6aff;background:#2d5bff;color:#fff;cursor:pointer;}
+  </style>
+</head>
+<body>
+  <canvas id="game"></canvas>
+  <div id="hud">Mass: <span id="mass">0</span><br/>Score: <span id="score">0</span><br/>FPS: <span id="fps">0</span></div>
+  <div id="perf" style="position:fixed;bottom:8px;left:8px;background:rgba(0,0,0,.35);padding:6px 10px;border-radius:8px;font-size:12px;line-height:1.3;max-width:240px;">
+    <b>Perf</b><br/>
+    RTT: <span id="rtt">-</span> ms<br/>
+  Jitter: <span id="jitter">-</span> ms<br/>
+    Last JSON: <span id="pktsize">-</span> B<br/>
+    Players: <span id="pcount">0</span> | Food: <span id="fcount">0</span><br/>
+    Bin size: <span id="binsize">-</span> B
+  </div>
+  <div id="leaderboard"></div>
+  <div id="deathMsg" style="display:none"></div>
+  <div id="nameInputWrap">
+  <input id="playerName" placeholder="名字" maxlength="16" />
+  <button id="startBtn">開始遊戲</button>
+  </div>
+  <script src="/socket.io/socket.io.js"></script>
+  <script type="module" src="main.js"></script>
+</body>
+
+</body>
+</html>

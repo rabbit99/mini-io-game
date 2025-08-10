@@ -1,0 +1,17 @@
+{
+  "name": "mini-io-game",
+  "version": "0.1.0",
+  "description": "A minimal real-time .io style multiplayer game (original code, inspired by cell-eating mechanics)",
+  "type": "module",
+  "scripts": {
+    "start": "node server/server.js",
+    "dev": "node server/server.js",
+    "open": "powershell -NoLogo -NoProfile -Command \"$used=(Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue); if(-not $used){ Start-Process node -ArgumentList 'server/server.js' }; Start-Sleep -Milliseconds 400; Start-Process http://localhost:3000\"",
+    "start:open": "npm run open"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5",
+    "nanoid": "^5.0.7"
+  }
+}
